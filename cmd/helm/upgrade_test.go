@@ -137,6 +137,11 @@ func TestUpgradeCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("upgrade crazy-bunny --wait --wait-for-jobs '%s'", chartPath),
 			golden: "output/upgrade-with-wait-for-jobs.txt",
 			rels:   []*release.Release{relMock("crazy-bunny", 2, ch2)},
+		},{
+			name:   "rollback on a failed upgrade release with '--atomic' and '--use-source-hooks'",
+			cmd:    fmt.Sprintf("upgrade crazy-bunny --atomic --use-source-hooks-on-rollback '%s'", chartPath),
+			golden: "output/upgrade-with-atomic-and-use-source-hooks.txt",
+			rels:   []*release.Release{relMock("crazy-bunny", 1, ch)},
 		},
 		{
 			name:      "upgrade a release with missing dependencies",

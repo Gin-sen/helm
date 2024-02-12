@@ -190,6 +190,61 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 	})
 }
 
+
+func TestUpgradeRelease_UseTargetHooks(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	t.Run("atomic rollback succeeds", func(t *testing.T) {
+		upAction := upgradeAction(t)
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = release.StatusDeployed
+		upAction.cfg.Releases.Create(rel)
+
+		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		// We can't make Update error because then the rollback won't work
+		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
+		upAction.cfg.KubeClient = failer
+		upAction.Atomic = true
+		upAction.UseSourceHooks = true
+		vals := map[string]interface{}{}
+
+		res, err := upAction.Run(rel.Name, buildChart(), vals)
+		req.Error(err)
+		is.Contains(err.Error(), "arming key removed")
+		is.Contains(err.Error(), "atomic")
+
+		// Now make sure it is actually upgraded
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
+		is.NoError(err)
+		// Should have rolled back to the previous
+		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+	})
+
+	t.Run("atomic uninstall fails", func(t *testing.T) {
+		upAction := upgradeAction(t)
+		rel := releaseStub()
+		rel.Name = "fallout"
+		rel.Info.Status = release.StatusDeployed
+		upAction.cfg.Releases.Create(rel)
+
+		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		failer.UpdateError = fmt.Errorf("update fail")
+		upAction.cfg.KubeClient = failer
+		upAction.Atomic = true
+		upAction.UseSourceHooks = true
+		vals := map[string]interface{}{}
+
+		_, err := upAction.Run(rel.Name, buildChart(), vals)
+		req.Error(err)
+		is.Contains(err.Error(), "update fail")
+		is.Contains(err.Error(), "an error occurred while rolling back the release")
+	})
+}
+
+
 func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	is := assert.New(t)
 
@@ -425,6 +480,40 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	failer.WaitDuration = 5 * time.Second
 	upAction.cfg.KubeClient = failer
 	upAction.Atomic = true
+	vals := map[string]interface{}{}
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	time.AfterFunc(time.Second, cancel)
+
+	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+
+	req.Error(err)
+	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
+
+	// Now make sure it is actually upgraded
+	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
+	is.NoError(err)
+	// Should have rolled back to the previous
+	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+}
+
+func TestUpgradeRelease_Interrupted_UseTargetHooks(t *testing.T) {
+
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "interrupted-release"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
+
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitDuration = 5 * time.Second
+	upAction.cfg.KubeClient = failer
+	upAction.Atomic = true
+	upAction.UseSourceHooks = true
 	vals := map[string]interface{}{}
 
 	ctx := context.Background()
