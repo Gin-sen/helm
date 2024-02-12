@@ -90,6 +90,8 @@ type Upgrade struct {
 	MaxHistory int
 	// Atomic, if true, will roll back on failure.
 	Atomic bool
+	// UseSourceHooks if true with Atomic, run hooks from source release during rollback
+	UseSourceHooks bool
 	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
@@ -510,6 +512,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Wait = true
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
+		rollin.UseSourceHooks = u.UseSourceHooks
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
