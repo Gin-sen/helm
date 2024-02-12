@@ -90,7 +90,7 @@ type Upgrade struct {
 	MaxHistory int
 	// Atomic, if true, will roll back on failure.
 	Atomic bool
-	// UseSourceHooks if true whith Atomic, run hooks from source release during rollback
+	// UseSourceHooks if true with Atomic, run hooks from source release during rollback
 	UseSourceHooks bool
 	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
