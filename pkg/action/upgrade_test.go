@@ -190,7 +190,6 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 	})
 }
 
-
 func TestUpgradeRelease_UseTargetHooks(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -243,7 +242,6 @@ func TestUpgradeRelease_UseTargetHooks(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while rolling back the release")
 	})
 }
-
 
 func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	is := assert.New(t)
